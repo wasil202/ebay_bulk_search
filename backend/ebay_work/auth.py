@@ -64,12 +64,11 @@ def get_market_insights_access_token():
     return access_token, expires_in
 
 
-
 def get_browse_access_token():
 
     credentials = f"{CLIENT_ID}:{CLIENT_SECRET}" # We want the colon, Ebay will read this.
     credentials_bytes = credentials.encode("utf-8") # Converted to bytes because base 64 works on bytes.
-    encoded = base64.b64encode(credentials_bytes) # Converts bytes to base54 encoded bytes
+    encoded = base64.b64encode(credentials_bytes) # Converts bytes to base64 encoded bytes
 
     # Now we turn the encoded bytes back into text for https
     basic_auth = encoded.decode("utf-8")

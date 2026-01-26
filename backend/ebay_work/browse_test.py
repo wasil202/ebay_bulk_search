@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import requests
 import pandas as pd
+import numpy as np
 
 # Browse test:
 def ebay_search(access_token, item):
@@ -27,12 +28,13 @@ def ebay_search(access_token, item):
 
 
 def ebay_batch_search(access_token, item, limit, text_to_ignore = ""):
-    # Browse endpoint but now just returns more search results
+    # Browse endpoint but now just returns more search results, only returns fixed price listing, no auctions
     '''
     item - string: The search query (What do you want to buy on Ebay?)
     limit - integer: Number of results returned from Ebay search
     text_to_ignore - list: Words/phrases to exclude from the search
     '''
+    page_limit = 200 # Ebay search API can only return 200 items at a time
 
     string_to_append = "" # Will construct the string
 
@@ -55,7 +57,7 @@ def ebay_batch_search(access_token, item, limit, text_to_ignore = ""):
     params = {
         "q": f"{item}" + string_to_append, # The search text minus excluded words
         "limit": limit, # Number of items returned
-        "filter": "itemLocationCountry:GB"
+        "filter": "itemLocationCountry:GB,buyingOptions:{FIXED_PRICE}"
     }
 
     response = requests.get(url, headers=headers, params=params)
@@ -89,15 +91,26 @@ def clean_up_bulk_search_data(raw_data_item_dic): # Chain to bulk search functio
     for raw_data_item in raw_data_item_dic:
         # print(raw_data_item_dic)
         
-        keys_to_remove = ['itemId', 'leafCategoryIds', 'categories', 'itemHref', 'seller', 'condition', 'conditionId', 'shippingOptions', 'buyingOptions', 'itemLocation', 'adultOnly', 'legacyItemId', 'availableCoupons', 'itemOriginDate', 'itemCreationDate', 'topRatedBuyingExperience', 'priorityListing', 'listingMarketplaceId', 'epid', 'marketingPrice']
-
+        keys_to_remove = [
+            'itemId', 'leafCategoryIds', 'categories', 'itemHref', 'seller',
+            'condition', 'conditionId', 'shippingOptions', 'buyingOptions',
+            'itemLocation', 'adultOnly', 'legacyItemId', 'availableCoupons',
+            'itemOriginDate', 'itemCreationDate', 'topRatedBuyingExperience',
+            'priorityListing', 'listingMarketplaceId', 'epid', 'marketingPrice', 'bidCount'
+        ]
         for entry in keys_to_remove:
             raw_data_item.pop(entry, None) # Removing all the data assocaited to above keys. If doesn't exist return none
         
         scanned_items.append(raw_data_item)
 
-    df = pd.DataFrame(scanned_items) # Creating a dataframe output for usage later.
 
-    return df
+    df = pd.DataFrame(scanned_items) # Creating a dataframe output for usage later.
+    ebay_raw_search_df = df.replace([np.inf, -np.inf], np.nan)
+    ebay_raw_search_df = ebay_raw_search_df.where(df.notna(), None) # Swap all NaN with None as NaN doesn't work with JSON outputs, 
+    
+    # Need JSON Outputs for chatgpt
+
+    
+    return ebay_raw_search_df
 
 
