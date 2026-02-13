@@ -8,14 +8,10 @@ def create_dfs_for_comparison(ebay_raw_search_df):
     Creates two dataframes from a sample. One with searches we wish to remove and 1 with searches we keep
     Args: Raw search data dataframe.
 
-    Returns: Two separate dataframes
+    Returns: separate dataframes
     '''
     
-
     ebay_raw_search_df_indicies = ebay_raw_search_df.index.tolist()
-
-    print(ebay_raw_search_df_indicies)
-
     length_raw_searches_df = len(ebay_raw_search_df)
 
     if length_raw_searches_df >= 100:
@@ -101,10 +97,59 @@ def create_dfs_for_comparison(ebay_raw_search_df):
 
 
 
+'''
+- To use this with fastAPI and a frontend we need to split it into two steps
+- Backend creates a sample and then sends it to the frontend
+- User will select searches (rows of the dataframe) in the UI then backend continues with the function
+'''
+
+def make_sample(ebay_raw_search_df):
+    ebay_raw_search_df_indicies = ebay_raw_search_df.index.tolist()
+    length_raw_searches_df = len(ebay_raw_search_df)
+
+    if length_raw_searches_df >= 100:
+        sample_size = length_raw_searches_df * 0.3 # 30% of data
+    elif length_raw_searches_df<100 and length_raw_searches_df > 30:
+        sample_size = length_raw_searches_df * 0.5 # 50% of data
+    else:
+        sample_size = length_raw_searches_df * 0.5 # 30% of data
+
+    sample_size = math.ceil(sample_size) # Always round up. 
+
+    searches_sample_df = ebay_raw_search_df.sample(sample_size) # random entires from the df
+    searches_sample_row_indices = searches_sample_df.index.tolist() # List of indicies of sample
+
+    
+
+    return searches_sample_df, searches_sample_row_indices
 
 
 
+def record_users_choices(list_of_indicies_to_delete, searches_sample_row_indices, ebay_raw_search_df, ebay_raw_search_df_indicies, searches_sample_df):
+    '''
+    Assume that the delete_indicies list will be created in the frontend.
+    '''
 
+    list_of_indicies_to_review = [x for x in searches_sample_row_indices if x not in list_of_indicies_to_delete]
+    list_of_indicies_not_sampled = [x for x in ebay_raw_search_df_indicies if x not in list_of_indicies_to_delete and x not in list_of_indicies_to_review]
 
+    
+    searches_to_remove_df = (
+        searches_sample_df.loc[list_of_indicies_to_delete] if list_of_indicies_to_delete
+        else searches_sample_df.iloc[0:0] and status == "Abort Search Filter"
+    ) # so if there is no list of indicies to delete, ie user accepted everything then just give a blank data frame with same headings as sample df
 
+    searches_to_keep_df = (
+        searches_sample_df.loc[list_of_indicies_to_review] if list_of_indicies_to_review
+        else searches_sample_df.iloc[0:0] and status == "Abort Search Filter"
+    )
+
+    searches_to_check_df = ebay_raw_search_df.loc[list_of_indicies_not_sampled] # extracted from raw df
+
+    if not list_of_indicies_to_delete:
+        status = "Abort Search Filter"
+    else:
+        status = "Proceed"
+
+    return searches_to_keep_df, searches_to_remove_df, searches_to_check_df, list_of_indicies_not_sampled, status
 

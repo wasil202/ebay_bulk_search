@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import requests
 import pandas as pd
 import numpy as np
+import math 
 
 # Browse test:
 def ebay_search(access_token, item):
@@ -26,15 +27,17 @@ def ebay_search(access_token, item):
 
 
 
-
-def ebay_batch_search(access_token, item, limit, text_to_ignore = ""):
+def ebay_batch_search(access_token, item, number_of_searches, text_to_ignore = ""):
     # Browse endpoint but now just returns more search results, only returns fixed price listing, no auctions
     '''
     item - string: The search query (What do you want to buy on Ebay?)
     limit - integer: Number of results returned from Ebay search
     text_to_ignore - list: Words/phrases to exclude from the search
     '''
-    page_limit = 200 # Ebay search API can only return 200 items at a time
+    page_limit = 200 # Ebay search API can only return 200 items at a time 
+    number_of_searches_required = number_of_searches/page_limit
+
+    
 
     string_to_append = "" # Will construct the string
 
@@ -53,19 +56,50 @@ def ebay_batch_search(access_token, item, limit, text_to_ignore = ""):
         "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB"
     }
 
+    offset_factor = 0 # will times be 200 to get the actual ofset.
+    results = None # Empty, after first iteration will replace this with a dictionary and then keep adding to it.
 
-    params = {
-        "q": f"{item}" + string_to_append, # The search text minus excluded words
-        "limit": limit, # Number of items returned
-        "filter": "itemLocationCountry:GB,buyingOptions:{FIXED_PRICE}"
-    }
+    for i in range(math.ceil(number_of_searches_required)):
+        
+        params = {
+            "q": f"{item}" + string_to_append, # The search text minus excluded words
+            "limit": page_limit, # Number of items returned in the request, set to max of 200
+            "offset": offset_factor * page_limit, # Number of items to skip
+            "filter": "itemLocationCountry:GB,buyingOptions:{FIXED_PRICE}" #No auctions
+        }
 
-    response = requests.get(url, headers=headers, params=params)
-    response.raise_for_status()
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
 
-    return response.json()
+        dictionary_response = response.json() # Converts the json file to a dictionary
+
+        if results == None:
+            results = dictionary_response
+        else: #If this is the second time we searched, ie on the second page then just add the items to the original dictionary
+            results["itemSummaries"].extend( 
+                dictionary_response.get("itemSummaries", [])
+            )
+        
+        offset_factor += 1 # Adding to offset, ie so we scan the next page next time. 
+
+     
+
+    return results # The big dictionary
+
+'''
+returned dictionary has shape
+
+{
+"href": "...",
+"total": 140,
+"next": "...",
+"limit": 2,
+"offset": 0,
+"itemSummaries": [ {...}, {...} ]
+}
 
 
+'''
 
 
 
