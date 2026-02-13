@@ -42,7 +42,7 @@ The system combines:
 - Fixed-price listings only
 ---
 
-# Installation
+
 ## Backend Setup
 
 Create a virtual environment
